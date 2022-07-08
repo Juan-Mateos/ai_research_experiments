@@ -11,6 +11,8 @@ sh
 pandas-profiling
 ipywidgets
 sklearn
-Tools
+toolz
 tomotopy
 jupyterlab
+spacy
+gensim
