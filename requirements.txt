@@ -13,3 +13,4 @@ ipywidgets
 sklearn
 Tools
 tomotopy
+jupyterlab
