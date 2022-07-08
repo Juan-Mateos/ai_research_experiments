@@ -48,7 +48,7 @@ def make_empty_list_na(df: DataFrame, variables: list):
     return df_
 
 
-def get_pwc_papers() -> DataFrame:
+def read_pwc_papers() -> DataFrame:
     """Get papers table"""
     # Read and parse the data
     return (
