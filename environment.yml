@@ -1,0 +1,7 @@
+name: ai_research_experiments
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - pip
+  - python=3.8
