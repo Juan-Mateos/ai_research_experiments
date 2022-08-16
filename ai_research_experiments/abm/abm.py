@@ -123,7 +123,9 @@ class SearchSpace:
 
         # Also store the reward distribution
         self.reward_distr = dict(Counter(self.rewards.values()))
-        self.reward_clusters_n = abm_ut.find_reward_clusters(self.rewards, 2)[1]
+        self.reward_clusters_n = abm_ut.find_reward_clusters(self.rewards, [2])[1]
+        self.all_clusters_n = abm_ut.find_reward_clusters(self.rewards, [1, 2])[1]
+        self.rew_bench_mean_dist = abm_ut.calculate_rew_disc_dist(self.rewards)
 
         return self
 

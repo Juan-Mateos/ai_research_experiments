@@ -4,6 +4,8 @@ import logging
 import random
 from functools import partial
 from typing import Dict, List, Tuple
+from itertools import combinations, permutations, product
+import uuid
 
 import altair as alt
 import numpy as np
@@ -157,7 +159,7 @@ def select_search_location(expected_rewards: List, top_n: int = 10) -> Tuple:
     ]
 
 
-def find_reward_clusters(rewards: Dict, category: int) -> np.array:
+def find_reward_clusters(rewards: Dict, category: List) -> np.array:
     """Use image segmentation to detect the number of clusters in a reward space
 
     Args:
@@ -169,7 +171,7 @@ def find_reward_clusters(rewards: Dict, category: int) -> np.array:
     )
 
     return label(
-        rew_grid.applymap(lambda x: x == category),
+        rew_grid.applymap(lambda x: x in category),
         structure=[[1, 1, 1], [1, 1, 1], [1, 1, 1]],
     )
 
@@ -244,7 +246,7 @@ def discovery_metrics(discoveries: Dict, rewards: Dict, category: int) -> pd.Dat
     )
 
     # Num clusters found
-    clust_grid, num_clust = find_reward_clusters(rewards, category=2)
+    clust_grid, num_clust = find_reward_clusters(rewards, category=[2])
 
     share_clusters_found = (
         count_clusters_found(clust_grid, discoveries, category=category) / num_clust
@@ -271,3 +273,104 @@ def discovery_metrics(discoveries: Dict, rewards: Dict, category: int) -> pd.Dat
         ],
         columns=["category", "variable", "value"],
     )
+
+
+def execute_strategy(space, strategy, iterations):
+    """Execuutes a search strategy in a space
+    Args:
+        space: a space object
+        strategy: a strategy for the agent
+        iterations: number of iterations to run the strategy
+
+    Returns:
+        scores and discoveries
+    """
+
+    agent_id = str(uuid.uuid4())
+
+    space.make_agents(strategy)
+    space.search(iterations=iterations)
+
+    scores, discoveries = (
+        space.make_metrics(categories=[2]).assign(agent_id=agent_id),
+        {agent_id: space.plot_discoveries()},
+    )
+    space.reset_discoveries()
+
+    return scores, discoveries
+
+
+def generate_alternative_rewards(strat_dict: Dict) -> List:
+    """Generates combinations of potential rewards
+
+    Args:
+        reward_dict: a dict where some of the parameters change
+    """
+
+    combi_dict = {
+        k: v if type(v) not in [float, int] else [v] for k, v in strat_dict.items()
+    }
+
+    parameter_range = list(product(*combi_dict.values()))
+
+    return [{k: v for k, v in zip(combi_dict.keys(), el)} for el in parameter_range]
+
+
+def generate_alternative_agents(agent_dict: Dict):
+    """Generates combinations of potential agents
+
+    Args:
+        agent_dict: A dict where some of the parameters change
+    """
+
+    parameter_permutations = set(
+        list(
+            product(
+                *[
+                    list(permutations(v if type(v) not in [float, int] else 2 * [v], 2))
+                    for v in agent_dict.values()
+                ]
+            )
+        )
+    )
+
+    agent_combinations = [
+        [
+            {g: {k: it[n] for k, it in zip(agent_dict.keys(), el)}}
+            for n, g in enumerate(["group_1", "group_2"])
+        ]
+        for el in parameter_permutations
+    ]
+
+    return [[d[0], d[1]] for d in agent_combinations]
+
+
+def label_df(df, label_dict):
+
+    df_ = df.copy()
+
+    for k, v in label_dict.items():
+        df_[k] = v
+    return df_
+
+
+def calculate_rew_disc_dist(rewards: Dict) -> np.float:
+    """Calculates the distance between rewards and discoveries
+
+    Args:
+        rewards: dict with cell status
+
+    Returns:
+        a float with the mean distance between rewards and discoveries
+    """
+
+    bench, rewards = [
+        make_df(rewards).query(f"status=={n}")[["x", "y"]].values for n in [1, 2]
+    ]
+
+    if (len(bench) > 0) & (len(rewards) > 0):
+        return np.mean(pairwise_distances(bench, rewards, metric="cosine"))
+
+    else:
+        logging.info("Couldn't calculate distance between rewards and discoveries")
+        return np.nan
