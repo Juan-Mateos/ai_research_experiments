@@ -16,4 +16,5 @@ tomotopy
 jupyterlab
 webdriver-manager
 altair_saver
-selenium
+selenium==4.2.0
+zenodo_get
